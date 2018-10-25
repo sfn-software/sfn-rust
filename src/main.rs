@@ -1,11 +1,11 @@
-extern crate clap;
-use clap::{Arg, App};
+mod protocol;
+use protocol::handle_client;
 
 use std::net::{TcpListener, TcpStream};
 use std::io;
 
-mod protocol;
-use protocol::handle_client;
+extern crate clap;
+use clap::{Arg, App};
 
 
 fn main() -> io::Result<()> {
