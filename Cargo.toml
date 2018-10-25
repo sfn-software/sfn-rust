@@ -5,3 +5,4 @@ authors = ["m1kc (Max Musatov) <m1kc@yandex.ru>"]
 
 [dependencies]
 clap = "2.30.0"
+byteorder = "1.2.6"
