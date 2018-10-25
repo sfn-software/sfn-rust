@@ -45,8 +45,11 @@ fn recv_files(mut stream: impl Read) -> io::Result<()> {
 		let header = get_header(&mut stream)?;
 
 		let mut remain = header.size;
-		let mut buf: [u8; 16] = [0x00; 16];
 		loop {
+			let buf_size: usize = if remain >= 16 { 16 } else { remain as usize };
+			let mut buf = Vec::with_capacity(0);
+			buf.resize(buf_size, 0);
+
 			let read = stream.read(&mut buf)?;
 			println!("read -> {}", read);
 			if read == 0 {
