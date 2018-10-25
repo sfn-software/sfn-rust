@@ -13,6 +13,8 @@ const SFN_FILE: u8 = 0x01;
 const SFN_DONE: u8 = 0x02;
 const SFN_FILE_WITH_MD5: u8 = 0x03;
 
+const BUFFER_SIZE: usize = 64*1024; // bytes
+
 struct SMFileHeader {
 	filename: String,
 	size: u64,
@@ -40,7 +42,18 @@ fn recv_files(mut stream: impl Read) -> io::Result<()> {
 
 		println!("Receiving a file");
 
-		let header = get_header(stream);
+		let header = get_header(&mut stream)?;
+
+		let mut remain = header.size;
+		let mut buf: [u8; 16] = [0x00; 16];
+		loop {
+			let read = stream.read(&mut buf)?;
+			println!("read -> {}", read);
+			if read == 0 {
+				break;
+			}
+			remain -= (read as u64);
+		}
 
 		Ok(())
 	}
