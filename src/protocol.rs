@@ -1,9 +1,8 @@
 use std::io;
-use std::result::Result;
-use std::error::Error;
+// use std::result::Result;
+// use std::error::Error;
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex};
+use std::net::{TcpStream};
 use std::thread;
 
 
@@ -40,7 +39,7 @@ fn recv_files(mut stream: impl Read) -> io::Result<()> {
 }
 
 pub fn handle_client(stream: TcpStream) -> io::Result<()> {
-	let stream_clone = stream.try_clone().unwrap();
+	let stream_clone = stream.try_clone()?;
 	let send_thread = thread::spawn(move || {
 		send_files(&stream_clone).unwrap();
 	});
