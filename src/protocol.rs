@@ -4,6 +4,7 @@ use std::io;
 use std::io::{Read, Write, BufRead, BufReader, Cursor};
 use std::net::{TcpStream};
 use std::thread;
+use std::fmt;
 
 extern crate byteorder;
 use self::byteorder::{LittleEndian, ReadBytesExt};
@@ -20,6 +21,12 @@ struct SMFileHeader {
 	size: u64,
 }
 
+impl fmt::Display for SMFileHeader {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{}, {} byte(s)]", self.filename, self.size)
+    }
+}
+
 
 fn send_files(mut stream: impl Write) -> io::Result<()> {
 	println!("Local done.");
@@ -32,30 +39,30 @@ fn recv_files(mut stream: impl Read) -> io::Result<()> {
 		fn get_header(mut stream: impl BufRead) -> io::Result<SMFileHeader> {
 			let mut filename: String = String::from("");
 			stream.read_line(&mut filename)?;
-			println!("  {}", filename);
+			let filename = String::from(filename.trim());
 
 			let size = stream.read_u64::<LittleEndian>()?;
-			println!("  {} byte(s)", size);
 
 			return Ok(SMFileHeader{ filename, size });
 		}
 
-		println!("Receiving a file");
-
 		let header = get_header(&mut stream)?;
+		println!("Receiving a file: {}", header);
 
 		let mut remain = header.size;
 		loop {
-			let buf_size: usize = if remain >= 16 { 16 } else { remain as usize };
-			let mut buf = Vec::with_capacity(0);
-			buf.resize(buf_size, 0);
+			let buf_size: usize = {
+				if remain >= (BUFFER_SIZE as u64) { BUFFER_SIZE } else { remain as usize }
+			};
+			let mut buf = Vec::new();
+			buf.resize(buf_size, 0x00);
 
 			let read = stream.read(&mut buf)?;
 			println!("read -> {}", read);
 			if read == 0 {
 				break;
 			}
-			remain -= (read as u64);
+			remain -= read as u64;
 		}
 
 		Ok(())
@@ -71,11 +78,10 @@ fn recv_files(mut stream: impl Read) -> io::Result<()> {
 			},
 			SFN_FILE => {
 				recv_file(&mut stream)?;
-				()
 			},
 			SFN_FILE_WITH_MD5 => panic!("Unsupported SM opcode: {}", opcode),
 			_ => panic!("Unsupported SM opcode: {}", opcode),
-		}
+		};
 	}
 }
 
