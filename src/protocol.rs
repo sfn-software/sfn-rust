@@ -37,9 +37,9 @@ fn send_files(mut stream: impl Write) -> io::Result<()> {
 fn recv_files(mut stream: impl Read) -> io::Result<()> {
 	fn recv_file(mut stream: impl BufRead) -> io::Result<()> {
 		fn get_header(mut stream: impl BufRead) -> io::Result<SMFileHeader> {
-			let mut filename: String = String::from("");
+			let mut filename: String = String::new();
 			stream.read_line(&mut filename)?;
-			let filename = String::from(filename.trim());
+			let filename = filename.trim().to_string();
 
 			let size = stream.read_u64::<LittleEndian>()?;
 
