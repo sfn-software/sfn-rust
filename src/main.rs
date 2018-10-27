@@ -1,5 +1,4 @@
 mod protocol;
-use self::protocol::handle_client;
 
 use std::net::{TcpListener, TcpStream};
 use std::io;
@@ -55,7 +54,7 @@ fn work_as_server(addr: &str) -> io::Result<()> {
 	for stream in listener.incoming() {
 		let stream = stream?;
 		println!("Accepted connection from {}", stream.peer_addr()?);
-		return handle_client(stream);
+		return protocol::handle_client(stream);
 	}
 
 	Ok(())
@@ -67,5 +66,5 @@ fn work_as_client(addr: &str) -> io::Result<()> {
 	let sock = TcpStream::connect(addr)?;
 	println!("Connected");
 
-	return handle_client(sock);
+	return protocol::handle_client(sock);
 }

@@ -37,39 +37,38 @@ fn parse_hex(c: char) -> u8 {
 	}
 }
 
-fn read_md5_lf(mut stream: impl Read) -> io::Result<Digest> {
-	const MD5_LENGTH_BYTES: usize = 128 / 8;
-	let mut buf: [u8; MD5_LENGTH_BYTES] = [0x00; MD5_LENGTH_BYTES];
+fn read_line(mut stream: impl BufRead) -> io::Result<String> {
+	let mut ret: String = String::new();
+	stream.read_line(&mut ret)?;
+	Ok(ret.trim_end().to_string())
+}
 
-	let mut b2: [u8; 2] = [0x00; 2];
-	for i in 0..buf.len() {
-		stream.read_exact(&mut b2)?;
-		let c1: u8 = parse_hex(b2[0] as char);
-		let c2: u8 = parse_hex(b2[1] as char);
-		buf[i] = c1 * 16 + c2;
+fn parse_md5(s: String) -> io::Result<Digest> {
+	const MD5_LENGTH_BYTES: usize = 128 / 8;
+	if s.len() != MD5_LENGTH_BYTES * 2 {
+		panic!("Invalid MD5 hash: {}", s);
 	}
 
-	// skip LF
-	let mut b1: [u8; 1] = [0x00; 1];
-	stream.read_exact(&mut b1)?;
+	let s = s.as_bytes();
+	let mut buf: [u8; MD5_LENGTH_BYTES] = [0x00; MD5_LENGTH_BYTES];
+	for i in 0..buf.len() {
+		let c1: u8 = parse_hex(s[i*2+0] as char);
+		let c2: u8 = parse_hex(s[i*2+1] as char);
+		buf[i] = c1 * 16 + c2;
+	}
 
 	Ok(Digest(buf))
 }
 
 impl SMFileHeader {
 	pub fn read_from(mut stream: impl BufRead, with_md5: bool) -> io::Result<SMFileHeader> {
-		let mut filename: String = String::new();
-		stream.read_line(&mut filename)?;
-		let filename = filename.trim_end().to_string();
-
+		let filename = read_line(&mut stream)?;
 		let size = stream.read_u64::<LittleEndian>()?;
-
 		let md5 = if with_md5 {
-			Some(read_md5_lf(&mut stream)?)
+			Some( parse_md5( read_line(&mut stream)? )? )
 		} else {
 			None
 		};
-
 		return Ok(SMFileHeader{ filename, size, md5 });
 	}
 }
