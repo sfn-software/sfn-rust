@@ -8,6 +8,7 @@ use std::io::{Read, Write, BufRead, BufReader, Cursor};
 use std::net::{TcpStream};
 use std::thread;
 // use std::fmt;
+use std::fs::File;
 
 extern crate byteorder;
 use self::byteorder::{LittleEndian, ReadBytesExt};
@@ -23,7 +24,15 @@ const SFN_FILE_WITH_MD5: u8 = 0x03;
 const BUFFER_SIZE: usize = 64*1024; // bytes
 
 
-fn send_files(mut stream: impl Write) -> io::Result<()> {
+fn send_files(mut stream: impl Write, files: Vec<String>) -> io::Result<()> {
+	for filename in files {
+		let mut file = File::open(&filename)?;
+		println!("Sending file: {}", filename);
+
+		let mut file = BufReader::new(file);
+
+		// TODO
+	}
 	println!("Local done.");
 	stream.write(&[ SFN_DONE ])?;
 	Ok(())
@@ -68,10 +77,10 @@ fn recv_files(mut stream: impl Read) -> io::Result<()> {
 	}
 }
 
-pub fn handle_client(stream: TcpStream) -> io::Result<()> {
+pub fn handle_client(stream: TcpStream, files: Vec<String>) -> io::Result<()> {
 	let stream_clone = stream.try_clone()?;
 	let send_thread = thread::spawn(move || {
-		send_files(&stream_clone).unwrap();
+		send_files(&stream_clone, files).unwrap();
 	});
 	let recv_thread = thread::spawn(move || {
 		recv_files(&stream).unwrap();
