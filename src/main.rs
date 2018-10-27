@@ -1,5 +1,5 @@
 mod protocol;
-use protocol::handle_client;
+use self::protocol::handle_client;
 
 use std::net::{TcpListener, TcpStream};
 use std::io;
