@@ -6,23 +6,17 @@ Yet another implementation. Uses the standard sfn protocol, compatible with othe
 
 ### SM
 
-| Comment | TCP data
-| --- | ---
-| **[First file]** | `0x01` (FILE)
-|| Filename (UTF-8), terminate with LF
-|| File size (64 bits, little endian)
-|| File contents (N bytes)
-| **[More files]** | ...
-| **End of transmission** | `0x02` (DONE)
+Protocol stream consists of chunks, one after another, each started by chunk opcode. Each client **must** send `0x02` (DONE) when it doesn't intend to send chunks anymore.
 
-### SM-MD5
+| [Chunk 1] | ... | [Chunk N] | `0x02` (DONE) |
+| --------- | --- | --------- | ------------- |
 
-| Comment | TCP data
-| --- | ---
-| **[First file]** | `0x03` (FILE_WITH_MD5)
-|| Filename (UTF-8), terminate with LF
-|| File size (64 bits, little endian)
-|| MD5 sum (ASCII string), terminate with LF
-|| File contents (N byte
-| **[More files]** | ...
-| **End of transmission** | `0x02` (DONE)
+#### 0x01 (`FILE` chunk)
+
+| `0x01` | Filename (UTF-8),<br />end with `0x0A` (LF) | Size (64 bits, little endian) | File contents |
+| ------ | ------------------------------------------- | ----------------------------- | ------------- |
+
+#### 0x03 (`FILE_WITH_MD5` chunk)
+
+| `0x03` | Filename (UTF-8),<br />end with `0x0A` (LF) | Size (64 bits, little endian) | MD5 sum (ASCII hex string),<br />end with `0x0A` (LF) | File contents |
+| ------ | ------------------------------------------- | ----------------------------- | ----------------------------------------------------- | ------------- |
