@@ -45,15 +45,14 @@ fn parse_hex(c: char) -> u8 {
 }
 
 fn read_md5_lf(mut stream: impl Read) -> io::Result<Digest> {
-	let mut buf: [u8; 16] = [0x00; 16];
+	const MD5_LENGTH_BYTES: usize = 128 / 8;
+	let mut buf: [u8; MD5_LENGTH_BYTES] = [0x00; MD5_LENGTH_BYTES];
 
 	let mut b2: [u8; 2] = [0x00; 2];
-	for i in 0..16 {
+	for i in 0..buf.len() {
 		stream.read_exact(&mut b2)?;
-
 		let c1: u8 = parse_hex(b2[0] as char);
 		let c2: u8 = parse_hex(b2[1] as char);
-
 		buf[i] = c1 * 16 + c2;
 	}
 
@@ -117,15 +116,11 @@ fn recv_files(mut stream: impl Read) -> io::Result<()> {
 	loop {
 		let opcode = stream.read_u8()?;
 		match opcode {
+			SFN_FILE => recv_file(&mut stream, false)?,
+			SFN_FILE_WITH_MD5 => recv_file(&mut stream, true)?,
 			SFN_DONE => {
 				println!("Remote done.");
 				return Ok(());
-			},
-			SFN_FILE => {
-				recv_file(&mut stream, false)?;
-			},
-			SFN_FILE_WITH_MD5 => {
-				recv_file(&mut stream, true)?;
 			},
 			_ => panic!("Unsupported SM opcode: {}", opcode),
 		};
