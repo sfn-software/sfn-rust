@@ -2,19 +2,13 @@ mod sm_header;
 use self::sm_header::SMFileHeader;
 
 use std::io;
-// use std::result::Result;
-// use std::error::Error;
-use std::io::{Read, Write, BufRead, BufReader, Cursor};
+use std::io::{Read, Write, BufRead, BufReader};
 use std::net::{TcpStream};
 use std::thread;
-// use std::fmt;
 use std::fs::File;
 
 extern crate byteorder;
-use self::byteorder::{LittleEndian, ReadBytesExt};
-
-extern crate md5;
-use self::md5::{compute, Digest};
+use self::byteorder::{ReadBytesExt};
 
 
 const SFN_FILE: u8 = 0x01;
@@ -31,14 +25,30 @@ fn send_files(mut stream: impl Write, files: Vec<String>) -> io::Result<()> {
 
 		let mut file = BufReader::new(file);
 
-		// TODO
+		let size = std::fs::metadata(&filename)?.len();
+
+		// TODO: remove path to dir
+		let header = SMFileHeader{ filename, size, md5: None };
+		header.write_with_opcode(&mut stream)?;
+
+		let mut buf = Vec::with_capacity(BUFFER_SIZE);
+		loop {
+			buf.resize(BUFFER_SIZE, 0x00);
+			let count = file.read(&mut buf)?;
+			if count == 0 {
+				break;
+			}
+
+			buf.resize(count, 0x00);
+			stream.write(&buf)?;
+		}
 	}
 	println!("Local done.");
 	stream.write(&[ SFN_DONE ])?;
 	Ok(())
 }
 
-fn recv_files(mut stream: impl Read) -> io::Result<()> {
+fn recv_files(stream: impl Read) -> io::Result<()> {
 	fn recv_file(mut stream: impl BufRead, with_md5: bool) -> io::Result<()> {
 		let header = SMFileHeader::read_from(&mut stream, with_md5)?;
 		println!("Receiving a file: {}", header);

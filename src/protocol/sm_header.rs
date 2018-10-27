@@ -1,12 +1,9 @@
 use std::io;
-// use std::result::Result;
-// use std::error::Error;
-use std::io::{Read, Write, BufRead, BufReader, Cursor};
-use std::net::{TcpStream};
+use std::io::{Write, BufRead};
 use std::fmt;
 
 extern crate byteorder;
-use self::byteorder::{LittleEndian, ReadBytesExt};
+use self::byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 extern crate md5;
 use self::md5::Digest;
@@ -70,5 +67,24 @@ impl SMFileHeader {
 			None
 		};
 		return Ok(SMFileHeader{ filename, size, md5 });
+	}
+
+	pub fn write_with_opcode(&self, mut stream: impl Write) -> io::Result<()> {
+		let opcode = match self.md5 {
+			None => super::SFN_FILE,
+			Some(_) => super::SFN_FILE_WITH_MD5,
+		};
+		stream.write(&[ opcode ])?;
+
+		stream.write(self.filename.as_bytes())?;
+		stream.write(&[ 0x0A ])?;
+
+		stream.write_u64::<LittleEndian>(self.size)?;
+
+		if self.md5 != None {
+			panic!("Not implemented");
+		}
+
+		Ok(())
 	}
 }
