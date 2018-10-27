@@ -9,6 +9,9 @@ use std::fmt;
 extern crate byteorder;
 use self::byteorder::{LittleEndian, ReadBytesExt};
 
+extern crate md5;
+use self::md5::{compute, Digest};
+
 
 const SFN_FILE: u8 = 0x01;
 const SFN_DONE: u8 = 0x02;
@@ -19,12 +22,31 @@ const BUFFER_SIZE: usize = 64*1024; // bytes
 struct SMFileHeader {
 	filename: String,
 	size: u64,
+	md5: Option<Digest>,
 }
 
 impl fmt::Display for SMFileHeader {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[{}, {} byte(s)]", self.filename, self.size)
     }
+}
+
+impl SMFileHeader {
+	fn read_from(mut stream: impl BufRead, with_md5: bool) -> io::Result<SMFileHeader> {
+		let mut filename: String = String::new();
+		stream.read_line(&mut filename)?;
+		let filename = filename.trim().to_string();
+
+		let size = stream.read_u64::<LittleEndian>()?;
+
+		let md5 = if with_md5 {
+			None // TODO
+		} else {
+			None
+		};
+
+		return Ok(SMFileHeader{ filename, size, md5 });
+	}
 }
 
 
@@ -36,17 +58,7 @@ fn send_files(mut stream: impl Write) -> io::Result<()> {
 
 fn recv_files(mut stream: impl Read) -> io::Result<()> {
 	fn recv_file(mut stream: impl BufRead) -> io::Result<()> {
-		fn get_header(mut stream: impl BufRead) -> io::Result<SMFileHeader> {
-			let mut filename: String = String::new();
-			stream.read_line(&mut filename)?;
-			let filename = filename.trim().to_string();
-
-			let size = stream.read_u64::<LittleEndian>()?;
-
-			return Ok(SMFileHeader{ filename, size });
-		}
-
-		let header = get_header(&mut stream)?;
+		let header = SMFileHeader::read_from(&mut stream, false)?;
 		println!("Receiving a file: {}", header);
 
 		let mut remain = header.size;
