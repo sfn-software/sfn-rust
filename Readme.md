@@ -1,6 +1,6 @@
 # sfn-rust
 
-Yet another implementation. Uses the standard sfn protocol, compatible with other implementations.
+Yet another implementation. Uses the standard sfn L3 protocol, compatible with other implementations.
 
 ## Protocol modes
 
