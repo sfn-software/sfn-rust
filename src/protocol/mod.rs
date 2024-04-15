@@ -1,14 +1,17 @@
-mod sm_header;
+pub mod sm_header;
 use self::sm_header::SMFileHeader;
 
 use std::io;
 use std::io::{Read, Write, BufRead, BufReader};
-use std::net::{TcpStream};
+use std::net::TcpStream;
 use std::thread;
 use std::fs::File;
+use std::path::Path;
 
 extern crate byteorder;
-use self::byteorder::{ReadBytesExt};
+use self::byteorder::ReadBytesExt;
+
+extern crate md5;
 
 
 const SFN_FILE: u8 = 0x01;
@@ -27,8 +30,10 @@ fn send_files(mut stream: impl Write, files: Vec<String>) -> io::Result<()> {
 
 		let size = std::fs::metadata(&filename)?.len();
 
-		// TODO: remove path to dir
-		let header = SMFileHeader{ filename, size, md5: None };
+		// remove dirpath
+		let filename: String = Path::new(&filename).file_name().unwrap().to_str().unwrap().to_string();
+
+		let header = SMFileHeader{ filename, size, md5sum: None };
 		header.write_with_opcode(&mut stream)?;
 
 		let mut buf = Vec::with_capacity(BUFFER_SIZE);
@@ -53,6 +58,8 @@ fn recv_files(stream: impl Read) -> io::Result<()> {
 		let header = SMFileHeader::read_from(&mut stream, with_md5)?;
 		println!("Receiving a file: {}", header);
 
+		let mut file = File::create(&header.filename)?;
+
 		let mut remain = header.size;
 		loop {
 			let buf_size: usize = {
@@ -67,6 +74,9 @@ fn recv_files(stream: impl Read) -> io::Result<()> {
 				break;
 			}
 			remain -= read as u64;
+
+			// Write to file
+			file.write_all(&buf)?;
 		}
 
 		Ok(())

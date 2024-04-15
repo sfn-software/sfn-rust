@@ -1,4 +1,4 @@
-mod protocol;
+pub mod protocol;
 
 use std::net::{TcpListener, TcpStream};
 use std::io;

@@ -12,19 +12,27 @@ use self::md5::Digest;
 pub struct SMFileHeader {
 	pub filename: String,
 	pub size: u64,
-	pub md5: Option<Digest>,
+	pub md5sum: Option<Digest>,
 }
 
 impl fmt::Display for SMFileHeader {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self.md5 {
+		match self.md5sum {
 			None => write!(f, "[{}, {} byte(s)]", self.filename, self.size),
 			Some(md5) => write!(f, "[{}, {} byte(s), MD5: {:?}]", self.filename, self.size, md5),
 		}
 	}
 }
 
-fn parse_hex(c: char) -> u8 {
+/// Parse a hex digit.
+///
+/// ```
+/// # use sfn::protocol::sm_header::parse_hex;
+/// assert_eq!(parse_hex('1'), 0x01);
+/// assert_eq!(parse_hex('C'), 0x0C);
+/// assert_eq!(parse_hex('d'), 0x0D);
+/// ```
+pub fn parse_hex(c: char) -> u8 {
 	match c {
 		'0' => 0x00, '1' => 0x01, '2' => 0x02, '3' => 0x03, '4' => 0x04,
 		'5' => 0x05, '6' => 0x06, '7' => 0x07, '8' => 0x08, '9' => 0x09,
@@ -40,7 +48,19 @@ fn read_line(mut stream: impl BufRead) -> io::Result<String> {
 	Ok(ret.trim_end().to_string())
 }
 
-fn parse_md5(s: String) -> io::Result<Digest> {
+/// Parse a MD5 hash from a string.
+///
+/// ```
+/// # extern crate md5;
+/// # use sfn::protocol::sm_header::parse_md5;
+/// # fn main() {
+/// assert_eq!(
+///   parse_md5("881d8cd98f00b204e9800998ecf8427e").unwrap(),
+///   md5::Digest([0x88, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e])
+/// );
+/// # }
+/// ```
+pub fn parse_md5(s: &str) -> io::Result<Digest> {
 	const MD5_LENGTH_BYTES: usize = 128 / 8;
 	if s.len() != MD5_LENGTH_BYTES * 2 {
 		panic!("Invalid MD5 hash: {}", s);
@@ -62,15 +82,15 @@ impl SMFileHeader {
 		let filename = read_line(&mut stream)?;
 		let size = stream.read_u64::<LittleEndian>()?;
 		let md5 = if with_md5 {
-			Some( parse_md5( read_line(&mut stream)? )? )
+			Some( parse_md5( &read_line(&mut stream)? )? )
 		} else {
 			None
 		};
-		Ok(SMFileHeader{ filename, size, md5 })
+		Ok(SMFileHeader{ filename, size, md5sum: md5 })
 	}
 
 	pub fn write_with_opcode(&self, mut stream: impl Write) -> io::Result<()> {
-		let opcode = match self.md5 {
+		let opcode = match self.md5sum {
 			None => super::SFN_FILE,
 			Some(_) => super::SFN_FILE_WITH_MD5,
 		};
@@ -81,7 +101,7 @@ impl SMFileHeader {
 
 		stream.write_u64::<LittleEndian>(self.size)?;
 
-		if self.md5.is_some() {
+		if self.md5sum.is_some() {
 			panic!("Not implemented");
 		}
 
