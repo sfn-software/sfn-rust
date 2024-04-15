@@ -49,7 +49,7 @@ fn parse_md5(s: String) -> io::Result<Digest> {
 	let s = s.as_bytes();
 	let mut buf: [u8; MD5_LENGTH_BYTES] = [0x00; MD5_LENGTH_BYTES];
 	for i in 0..buf.len() {
-		let c1: u8 = parse_hex(s[i*2+0] as char);
+		let c1: u8 = parse_hex(s[i*2]   as char);
 		let c2: u8 = parse_hex(s[i*2+1] as char);
 		buf[i] = c1 * 16 + c2;
 	}
@@ -66,7 +66,7 @@ impl SMFileHeader {
 		} else {
 			None
 		};
-		return Ok(SMFileHeader{ filename, size, md5 });
+		Ok(SMFileHeader{ filename, size, md5 })
 	}
 
 	pub fn write_with_opcode(&self, mut stream: impl Write) -> io::Result<()> {
@@ -74,14 +74,14 @@ impl SMFileHeader {
 			None => super::SFN_FILE,
 			Some(_) => super::SFN_FILE_WITH_MD5,
 		};
-		stream.write(&[ opcode ])?;
+		stream.write_u8(opcode)?;
 
-		stream.write(self.filename.as_bytes())?;
-		stream.write(&[ 0x0A ])?;
+		stream.write_all(self.filename.as_bytes())?;
+		stream.write_u8(0x0A)?;
 
 		stream.write_u64::<LittleEndian>(self.size)?;
 
-		if self.md5 != None {
+		if self.md5.is_some() {
 			panic!("Not implemented");
 		}
 

@@ -20,7 +20,7 @@ const BUFFER_SIZE: usize = 64*1024; // bytes
 
 fn send_files(mut stream: impl Write, files: Vec<String>) -> io::Result<()> {
 	for filename in files {
-		let mut file = File::open(&filename)?;
+		let file = File::open(&filename)?;
 		println!("Sending file: {}", filename);
 
 		let mut file = BufReader::new(file);
@@ -40,11 +40,11 @@ fn send_files(mut stream: impl Write, files: Vec<String>) -> io::Result<()> {
 			}
 
 			buf.resize(count, 0x00);
-			stream.write(&buf)?;
+			stream.write_all(&buf)?;
 		}
 	}
 	println!("Local done.");
-	stream.write(&[ SFN_DONE ])?;
+	stream.write_all(&[ SFN_DONE ])?;
 	Ok(())
 }
 
