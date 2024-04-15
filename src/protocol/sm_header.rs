@@ -1,15 +1,17 @@
+use super::Opcode;
+
 use std::io;
 use std::io::{Write, BufRead};
 use std::fmt;
 
 extern crate byteorder;
 use self::byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-
 extern crate md5;
 use self::md5::Digest;
 
 
 pub struct SMFileHeader {
+	pub opcode: Opcode,
 	pub filename: String,
 	pub size: u64,
 	pub md5sum: Option<Digest>,
@@ -78,23 +80,23 @@ pub fn parse_md5(s: &str) -> io::Result<Digest> {
 }
 
 impl SMFileHeader {
-	pub fn read_from(mut stream: impl BufRead, with_md5: bool) -> io::Result<SMFileHeader> {
+	pub fn read_from(mut stream: impl BufRead) -> io::Result<SMFileHeader> {
+		let opcode = Opcode::from( stream.read_u8()? );
+		if opcode == Opcode::Done {
+			return Ok(SMFileHeader{ opcode, filename: String::new(), size: 0, md5sum: None });
+		}
+
 		let filename = read_line(&mut stream)?;
 		let size = stream.read_u64::<LittleEndian>()?;
-		let md5 = if with_md5 {
-			Some( parse_md5( &read_line(&mut stream)? )? )
-		} else {
-			None
+		let mut md5 = None;
+		if opcode == Opcode::MD5WithFile {
+			md5 = Some( parse_md5( &read_line(&mut stream)? )? );
 		};
-		Ok(SMFileHeader{ filename, size, md5sum: md5 })
+		Ok(SMFileHeader{ opcode, filename, size, md5sum: md5 })
 	}
 
 	pub fn write_with_opcode(&self, mut stream: impl Write) -> io::Result<()> {
-		let opcode = match self.md5sum {
-			None => super::SFN_FILE,
-			Some(_) => super::SFN_FILE_WITH_MD5,
-		};
-		stream.write_u8(opcode)?;
+		stream.write_u8(self.opcode as u8)?;
 
 		stream.write_all(self.filename.as_bytes())?;
 		stream.write_u8(0x0A)?;
