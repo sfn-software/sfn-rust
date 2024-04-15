@@ -105,6 +105,15 @@ fn recv_files(stream: impl Read) -> io::Result<()> {
 	fn recv_file(mut stream: impl BufRead, header: SMFileHeader) -> io::Result<()> {
 		println!("Receiving a file: {}", header);
 
+		let mut md5_context = md5::Context::new();
+		let has_md5 = match header.opcode {
+			Opcode::File => false,
+			Opcode::MD5WithFile => true,
+			Opcode::FileWithMD5 => true,
+			_ => panic!("Unexpected opcode: {:?}", header.opcode),
+		};
+		let mut expected_md5 = header.md5sum;
+
 		let mut file = File::create(&header.filename)?;
 
 		let mut remain = header.size;
@@ -124,6 +133,26 @@ fn recv_files(stream: impl Read) -> io::Result<()> {
 
 			// Write to file
 			file.write_all(&buf)?;
+
+			// Calculate MD5 if it makes sense
+			if has_md5 {
+				md5_context.consume(&buf);
+			}
+		}
+
+		if header.opcode == Opcode::FileWithMD5 {
+			let md5_string = sm_header::read_line(&mut stream)?;
+			expected_md5 = Some(sm_header::parse_md5(&md5_string)?);
+		}
+
+		if has_md5 {
+			let expected_md5 = expected_md5.unwrap();
+			println!("Checking MD5 (expected: {:?})", expected_md5);
+			let computed_md5 = md5_context.compute();
+			if expected_md5 != computed_md5 {
+				println!("MD5 mismatch: expected {:?}, got {:?}\n\n", expected_md5, computed_md5);
+				panic!("MD5 mismatch");
+			}
 		}
 
 		Ok(())
@@ -150,13 +179,13 @@ fn recv_files(stream: impl Read) -> io::Result<()> {
 pub fn handle_client(stream: TcpStream, files: Vec<String>) -> io::Result<()> {
 	let stream_clone = stream.try_clone()?;
 	let send_thread = thread::spawn(move || {
-		send_files(&stream_clone, files, ProtocolLevel::L1).unwrap();
+		send_files(&stream_clone, files, ProtocolLevel::L4).unwrap();
 	});
 	let recv_thread = thread::spawn(move || {
 		recv_files(&stream).unwrap();
 	});
 
-	send_thread.join().unwrap(); // TODO: wtf is this return type
+	send_thread.join().unwrap();
 	recv_thread.join().unwrap();
 	println!("All done, closing connection.");
 	Ok(())

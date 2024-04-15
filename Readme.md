@@ -1,6 +1,6 @@
 # sfn-rust
 
-This is yet another implementation of sfn, written in Rust. It uses the standard sfn L3 protocol, making it compatible with other implementations.
+This is yet another implementation of sfn, written in Rust. It uses the standard sfn L4 protocol, making it compatible with other implementations.
 
 Stability: **alpha**
 

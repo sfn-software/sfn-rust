@@ -44,7 +44,7 @@ pub fn parse_hex(c: char) -> u8 {
 	}
 }
 
-fn read_line(mut stream: impl BufRead) -> io::Result<String> {
+pub fn read_line(mut stream: impl BufRead) -> io::Result<String> {
 	let mut ret: String = String::new();
 	stream.read_line(&mut ret)?;
 	Ok(ret.trim_end().to_string())
